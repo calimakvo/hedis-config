@@ -8,6 +8,7 @@ import Data.Aeson
 import Data.Scientific
 import Data.Time
 import Database.Redis
+import Network.TLS
 
 import qualified Data.Aeson.Types as A
 import qualified Data.ByteString.Char8 as BS
@@ -24,7 +25,6 @@ Here is YAML example of config:
 host: localhost                 # host name or address
 port: 6379                      # you can specify either port
 \# socket: \/run\/redis.socket     # or unix socket path
-\# service: redis                # or service name
 password: "pass"                # if not specified then no password used
 database: 0                     # database number to connect to
 max-connections: 5              # max 5 connections in pool
@@ -45,7 +45,6 @@ parsePort o =
     optional
     $   fmap (\a -> PortNumber $ floor (a :: Scientific)) (o .: "port")
     <|> fmap UnixSocket (o .: "socket")
-    <|> fmap Service (o .: "service")
 
 parsePassword :: Object -> A.Parser (Maybe BS.ByteString)
 parsePassword o = do
@@ -54,6 +53,9 @@ parsePassword o = do
     Nothing -> Nothing
     Just "" -> Nothing
     Just ps -> Just $ T.encodeUtf8 ps
+
+parseClientParams :: Object -> A.Parser (Maybe (Maybe ClientParams))
+parseClientParams _ = return Nothing
 
 realToFrac' :: Scientific -> NominalDiffTime
 realToFrac' = realToFrac
@@ -73,6 +75,7 @@ instance FromJSON RedisConfig where
             <*> o .:? "max-connections" .!= connectMaxConnections defaultConnectInfo
             <*> fmap (fmap realToFrac') (o .:? "max-idle-time") .!= connectMaxIdleTime defaultConnectInfo
             <*> parseTimeout o .!= connectTimeout defaultConnectInfo
+            <*> parseClientParams o .!= connectTLSParams defaultConnectInfo
 
 -- | Open redis connection
 connectRedis :: RedisConfig -> IO Connection

@@ -43,6 +43,7 @@ library
                      , scientific
                      , text
                      , time
+                     , tls          >= 1.5
 
   exposed-modules:     Database.Redis.Config
 
